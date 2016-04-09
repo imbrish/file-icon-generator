@@ -23,8 +23,6 @@ class FileIconBuilder {
         $this->fontdir     = __DIR__.'/fonts/';
         $this->mimefile    = __DIR__.'/mime.types';
 
-
-
         // default colors, additions welcome
         $this->colors = array(
             // used if nothing matches
@@ -45,6 +43,9 @@ class FileIconBuilder {
             'document-print'    => '#666666',
             'text-code'         => '#336699',
         );
+
+        // mimetypes
+        $this->loadmimetypes();
     }
 
     /**
@@ -95,60 +96,76 @@ class FileIconBuilder {
     /**
      * Create icons for all known extension from mime.types
      *
-     * @param string $outdir directory to otput the files to
+     * @param string $dir  directory to output the files to
      */
-    public function createAll($outdir) {
-        if(!$this->mimetypes) $this->loadmimetypes();
-        @mkdir($outdir);
-        @mkdir("$outdir/16x16");
-        @mkdir("$outdir/32x32");
-
+    public function createAll($dir) {
         foreach(array_keys($this->mimetypes) as $ext) {
-            $this->create16x16($ext, "$outdir/16x16/$ext.png");
-            $this->create32x32($ext, "$outdir/32x32/$ext.png");
+            $this->createExt($dir, $ext);
         }
+    }
+
+    /**
+     * Create icons for all known extension from mime.types
+     *
+     * @param string $dir  directory to output the files to
+     */
+    public function createExt($dir, $ext) {
+        $dims = ['16x16', '32x32'];
+
+        foreach($dims as $dim) {
+            echo "Creating $dim...<br>";
+
+            $method = "create$dim";
+            $this->$method($dir, $ext);
+        }
+    }
+
+    /**
+     * Create an icon for the given extension
+     * 
+     * @param  string $ext    extension name
+     * @param  string $dir    directory to output the file to
+     * @param  string $dim    icon dimension
+     * @param  string $box    filetype box
+     * @param  string $font   filetype font
+     * @param  string $bevel  filetype box bevel
+     */
+    public function create($dir, $ext, $dim, $box, $font, $bevel = '') {
+        $tpl = $this->ext2template($ext, $dim);
+        $rgb = $this->ext2color($ext);
+
+        $im = imagecreatefrompng($tpl);
+        imagesavealpha($im, true);
+
+        $this->drawcolorbox($im, $box, $rgb, $bevel);
+        $this->drawtext($im, $box, strtoupper($ext), 6.0, $font);
+
+        if (!file_exists("out/$dir/$dim")) mkdir("out/$dir/$dim", 0777, true);
+
+        imagepng($im, "out/$dir/$dim/$ext.png", 9);
+        imagedestroy($im);
+
+        echo "$ext $dim created<br>";
     }
 
     /**
      * Create a 16x16 icon for the given extension
      *
-     * @param string $ext extension name
-     * @param string $out output file (png)
+     * @param string $ext  extension name
+     * @param string $dir  directory to output the file to
      */
-    public function create16x16($ext, $out) {
-        $box = array(0, 7, 15, 13);
-        $tpl = $this->ext2template($ext, '16x16');
-        $rgb = $this->ext2color($ext);
-
-        $im = imagecreatefrompng($tpl);
-        imagesavealpha($im, true);
-
-        $this->drawcolorbox($im, $box, $rgb, 'corner');
-        $this->drawtext($im, $box, strtoupper($ext), 6.0, 'pf_tempesta_five_compressed.ttf');
-
-        imagepng($im, $out, 9);
-        imagedestroy($im);
+    public function create16x16($dir, $ext) {
+        $this->create($dir, $ext, '16x16', [0, 7, 15, 13], 'pf_tempesta_five_compressed.ttf', 'corner');
     }
 
     /**
      * Create a 32x32 icon for the given extension
      *
-     * @param string $ext extension name
-     * @param string $out output file (png)
+     * @param string $ext  extension name
+     * @param string $dir  directory to output the file to
      */
-    public function create32x32($ext, $out) {
-        $box = array(4, 22, 26, 28);
-        $tpl = $this->ext2template($ext, '32x32');
-        $rgb = $this->ext2color($ext);
-
-        $im = imagecreatefrompng($tpl);
-        imagesavealpha($im, true);
-
-        $this->drawcolorbox($im, $box, $rgb, 'border');
-        $this->drawtext($im, $box, strtoupper($ext), 6.0, 'pf_tempesta_five.ttf');
-
-        imagepng($im, $out, 9);
-        imagedestroy($im);
+    public function create32x32($dir, $ext) {
+        $this->create($dir, $ext, '32x32', [4, 22, 26, 28], 'pf_tempesta_five.ttf', 'border');
     }
 
     /**
